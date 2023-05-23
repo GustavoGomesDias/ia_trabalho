@@ -4,8 +4,8 @@ import random
 from collections import deque
 from viewer import MazeViewer
 from math import inf, sqrt
-
-
+from Celula import Celula
+from PriorityQueue import PriorityQueue
 
 def gera_labirinto(n_linhas, n_colunas, inicio, goal):
     # cria labirinto vazio
@@ -25,14 +25,6 @@ def gera_labirinto(n_linhas, n_colunas, inicio, goal):
     labirinto[goal.y][goal.x] = 0
 
     return labirinto
-
-
-class Celula:
-    def __init__(self, y, x, anterior):
-        self.y = y
-        self.x = x
-        self.anterior = anterior
-
 
 def distancia(celula_1, celula_2):
     dx = celula_1.x - celula_2.x
@@ -73,7 +65,7 @@ def obtem_caminho(goal):
     return caminho
 
 
-def celulas_vizinhas_livres(celula_atual, labirinto):
+def celulas_vizinhas_livres(celula_atual, labirinto) -> list[Celula]:
     # generate neighbors of the current state
     vizinhos = [
         Celula(y=celula_atual.y-1, x=celula_atual.x-1, anterior=celula_atual),
@@ -194,16 +186,56 @@ def depth_first_search(labirinto, inicio, goal, viewer):
 
     return caminho, custo, expandidos
 
-# Heuristica possivelmente é o tanto de quadrados que o nó atual tem para chegar ao goal
-def heuristic():
-    pass
+# Distância euclidiana entre 2 pontos
+# Dado 2 pontos (x1, y1) e (x2, y2), a distância euclidiana entre eles é raiz_quadrada((x2-x1)² + (y2-y1)²)
+# O (x1, y1) é o nó atual e o (x2, y2) é o nó objetivo (goal)
+def heuristic(current: Celula, goal: Celula):
+    result_x = (goal.x - current.x)**2
+    result_y = (goal.y - current.y)**2
+    return sqrt(result_x + result_y)
 
+def is_goal(cell: Celula, goal: Celula):
+    return cell.x == goal.x and cell.y == goal.y
 
-# Fila de prioridade: https://gist.github.com/marcoscastro/c6bcb67d7c50078d20fd
 # A*: https://www.redblobgames.com/pathfinding/a-star/introduction.html
-def a_star_search(labirinto, inicio, goal, viewer):
-    pass
+def a_star_search(labirinto, inicio, goal, viewer: MazeViewer):
+    pq = PriorityQueue((inicio, 0))
+    # came_from = dict()
+    cost_so_far = dict()
+    cost_so_far[inicio] = 0
+    expanded = set()
 
+    goal_encontrado = None
+
+    while not pq.is_empty():
+        cell, _ = pq.get_lowest_prior()
+
+        if is_goal(cell, goal):
+            goal_encontrado = cell
+            break
+
+        neighbors = celulas_vizinhas_livres(cell, labirinto)
+
+        for next in neighbors:
+            new_cost = cost_so_far[cell] + 1
+            if next not in cost_so_far or new_cost < cost_so_far[next]:
+                # if (not esta_contido(expandidos, v)) and (not esta_contido(fronteira, v)):
+                # Aqui eu nunca testo se a célula já existe na fila e nem na fronteira, talvez o erro de parada subita seja por causa disso.
+                cost_so_far[next] = new_cost
+                prior = new_cost + heuristic(next, goal)
+                pq.ordered_insert((next, prior))
+                next.anterior = cell
+        
+        expanded.add(cell)
+        print(pq.get_priority_list())
+        print(pq.is_empty())
+        print('{}, {}'.format(cell.x, cell.y))
+        viewer.update(generated=pq.return_ordered_list_cell(), expanded=expanded)
+
+    caminho = obtem_caminho(goal_encontrado)
+    custo   = custo_caminho(caminho)
+
+    return caminho, custo, expanded
 
 
 #-------------------------------
@@ -233,7 +265,7 @@ def main():
         #----------------------------------------
         viewer._figname = "DFS"
         caminho, custo_total, expandidos = \
-                depth_first_search(labirinto, INICIO, GOAL, viewer)
+                a_star_search(labirinto, INICIO, GOAL, viewer)
 
         if len(caminho) == 0:
             print("Goal é inalcançavel neste labirinto.")
