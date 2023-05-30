@@ -55,3 +55,9 @@ class PriorityQueue:
     def is_empty(self):
         return len(self.queue) == 0
     
+    def exists_in_queue(self, v: Celula):
+        for i in range(len(self.queue)):
+            cell, prior = self.queue[i]
+            if v.x == cell.x and v.y == cell.y:
+                return True
+        return False

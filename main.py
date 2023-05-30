@@ -197,6 +197,46 @@ def heuristic(current: Celula, goal: Celula):
 def is_goal(cell: Celula, goal: Celula):
     return cell.x == goal.x and cell.y == goal.y
 
+
+# A * sem a hurísitca
+def ucs(labirinto, inicio, goal, viewer: MazeViewer):
+    pq = PriorityQueue((inicio, 0))
+    # came_from = dict()
+    cost_so_far = dict()
+    cost_so_far[inicio] = 0
+    expanded = set()
+
+    goal_encontrado = None
+
+    while not pq.is_empty():
+        # Para o UCS, eu pŕetendo remover o nó de menor
+        cell, _ = pq.get_highest_prior()
+
+        if is_goal(cell, goal):
+            goal_encontrado = cell
+            break
+
+        neighbors = celulas_vizinhas_livres(cell, labirinto)
+
+        for v in neighbors:
+            new_cost = cost_so_far[cell] + 1
+            if v not in cost_so_far or new_cost < cost_so_far[v]:
+                if (not esta_contido(expanded, v)) and (not pq.exists_in_queue(v)):
+                # Aqui eu nunca testo se a célula já existe na fila e nem na fronteira, talvez o erro de parada subita seja por causa disso.
+                    cost_so_far[v] = new_cost
+                    prior = new_cost
+                    pq.ordered_insert((v, prior))
+                    v.anterior = cell
+        
+        expanded.add(cell)
+        print(pq.get_priority_list())
+        viewer.update(generated=pq.return_ordered_list_cell(), expanded=expanded)
+
+    caminho = obtem_caminho(goal_encontrado)
+    custo   = custo_caminho(caminho)
+
+    return caminho, custo, expanded
+
 # A*: https://www.redblobgames.com/pathfinding/a-star/introduction.html
 def a_star_search(labirinto, inicio, goal, viewer: MazeViewer):
     pq = PriorityQueue((inicio, 0))
@@ -216,21 +256,19 @@ def a_star_search(labirinto, inicio, goal, viewer: MazeViewer):
 
         neighbors = celulas_vizinhas_livres(cell, labirinto)
 
-        for next in neighbors:
+        for v in neighbors:
             new_cost = cost_so_far[cell] + 1
-            if next not in cost_so_far or new_cost < cost_so_far[next]:
-                # if (not esta_contido(expandidos, v)) and (not esta_contido(fronteira, v)):
+            if v not in cost_so_far or new_cost < cost_so_far[v]:
+                if (not esta_contido(expanded, v)) and (not pq.exists_in_queue(v)):
                 # Aqui eu nunca testo se a célula já existe na fila e nem na fronteira, talvez o erro de parada subita seja por causa disso.
-                cost_so_far[next] = new_cost
-                prior = new_cost + heuristic(next, goal)
-                pq.ordered_insert((next, prior))
-                next.anterior = cell
+                    cost_so_far[v] = new_cost
+                    prior = new_cost + heuristic(v, goal)
+                    pq.ordered_insert((v, prior))
+                    v.anterior = cell
         
         expanded.add(cell)
         print(pq.get_priority_list())
-        print(pq.is_empty())
-        print('{}, {}'.format(cell.x, cell.y))
-        viewer.update(generated=pq.return_ordered_list_cell(), expanded=expanded)
+        # viewer.update(generated=pq.return_ordered_list_cell(), expanded=expanded)
 
     caminho = obtem_caminho(goal_encontrado)
     custo   = custo_caminho(caminho)
@@ -242,63 +280,63 @@ def a_star_search(labirinto, inicio, goal, viewer: MazeViewer):
 
 
 def main():
-    while True:
-        #SEED = 42  # coloque None no lugar do 42 para deixar aleatorio
-        #random.seed(SEED)
-        N_LINHAS  = 10
-        N_COLUNAS = 20
-        INICIO = Celula(y=0, x=0, anterior=None)
-        GOAL   = Celula(y=N_LINHAS-1, x=N_COLUNAS-1, anterior=None)
+    # while True:
+    #SEED = 42  # coloque None no lugar do 42 para deixar aleatorio
+    #random.seed(SEED)
+    N_LINHAS  = 20
+    N_COLUNAS = 30
+    INICIO = Celula(y=0, x=0, anterior=None)
+    GOAL   = Celula(y=N_LINHAS-1, x=N_COLUNAS-1, anterior=None)
 
 
-        """
-        O labirinto sera representado por uma matriz (lista de listas)
-        em que uma posicao tem 0 se ela eh livre e 1 se ela esta ocupada.
-        """
-        labirinto = gera_labirinto(N_LINHAS, N_COLUNAS, INICIO, GOAL)
+    """
+    O labirinto sera representado por uma matriz (lista de listas)
+    em que uma posicao tem 0 se ela eh livre e 1 se ela esta ocupada.
+    """
+    labirinto = gera_labirinto(N_LINHAS, N_COLUNAS, INICIO, GOAL)
 
-        viewer = MazeViewer(labirinto, INICIO, GOAL,
-                            step_time_miliseconds=20, zoom=40)
+    viewer = MazeViewer(labirinto, INICIO, GOAL,
+                        step_time_miliseconds=20, zoom=40)
 
-        #----------------------------------------
-        # BFS Search
-        #----------------------------------------
-        viewer._figname = "DFS"
-        caminho, custo_total, expandidos = \
-                a_star_search(labirinto, INICIO, GOAL, viewer)
+    #----------------------------------------
+    # BFS Search
+    #----------------------------------------
+    viewer._figname = "DFS"
+    caminho, custo_total, expandidos = \
+            a_star_search(labirinto, INICIO, GOAL, viewer)
 
-        if len(caminho) == 0:
-            print("Goal é inalcançavel neste labirinto.")
+    if len(caminho) == 0:
+        print("Goal é inalcançavel neste labirinto.")
 
-        print(
-            f"BFS:"
-            f"\tCusto total do caminho: {custo_total}.\n"
-            f"\tNumero de passos: {len(caminho)-1}.\n"
-            f"\tNumero total de nos expandidos: {len(expandidos)}.\n\n"
+    print(
+        f"BFS:"
+        f"\tCusto total do caminho: {custo_total}.\n"
+        f"\tNumero de passos: {len(caminho)-1}.\n"
+        f"\tNumero total de nos expandidos: {len(expandidos)}.\n\n"
 
-        )
+    )
 
-        viewer.update(path=caminho)
-        viewer.pause()
-
-
-        #----------------------------------------
-        # DFS Search
-        #----------------------------------------
-
-        #----------------------------------------
-        # A-Star Search
-        #----------------------------------------
-
-        #----------------------------------------
-        # Uniform Cost Search (Obs: opcional)
-        #----------------------------------------
+    viewer.update(path=caminho)
+    viewer.pause()
 
 
+    #----------------------------------------
+    # DFS Search
+    #----------------------------------------
+
+    #----------------------------------------
+    # A-Star Search
+    #----------------------------------------
+
+    #----------------------------------------
+    # Uniform Cost Search (Obs: opcional)
+    #----------------------------------------
 
 
-    print("OK! Pressione alguma tecla pra finalizar...")
-    input()
+
+
+print("OK! Pressione alguma tecla pra finalizar...")
+input()
 
 
 if __name__ == "__main__":
